@@ -1,19 +1,24 @@
-FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
+FROM python:3.11-slim
 
   WORKDIR /app
 
   RUN apt-get update && apt-get install -y \
+      git \
+      wget \
+      curl \
+      build-essential \
       ffmpeg \
       libsndfile1 \
-      git \
       && rm -rf /var/lib/apt/lists/*
 
-  RUN pip install --no-cache-dir numpy==1.26.0
+  RUN pip install --no-cache-dir \
+      torch==2.6.0 \
+      torchvision==0.21.0 \
+      torchaudio==2.6.0 \
+      --index-url https://download.pytorch.org/whl/cu124
 
-  RUN git clone https://github.com/resemble-ai/chatterbox.git /tmp/chatterbox && \
-      cd /tmp/chatterbox && \
-      pip install --no-cache-dir -e . && \
-      rm -rf /tmp/chatterbox/.git
+  RUN pip install --no-cache-dir \
+      "chatterbox-multilingual @ git+https://github.com/travisvn/chatterbox.git"
 
   RUN pip install --no-cache-dir \
       runpod \
