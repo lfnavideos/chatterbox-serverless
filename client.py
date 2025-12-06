@@ -31,7 +31,7 @@ from pathlib import Path
 API_KEY = os.environ.get("RUNPOD_API_KEY", "SUA_API_KEY_AQUI")
 
 # Endpoint ID (ou use variável de ambiente RUNPOD_ENDPOINT_ID)
-ENDPOINT_ID = os.environ.get("RUNPOD_ENDPOINT_ID", "SEU_ENDPOINT_ID_AQUI")
+ENDPOINT_ID = os.environ.get("RUNPOD_ENDPOINT_ID", "oa4tb12tnjuhmd")
 
 # Diretório com os samples de voz
 VOICES_DIR = Path("I:/Meu Drive/SISTEMAS/PROJETOS/VIDEO/VOICES/samples_librivox")

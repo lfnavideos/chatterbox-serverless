@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir \
     runpod \
     chatterbox-tts \
     torchaudio \
+    torchvision \
     requests \
     soundfile
 
