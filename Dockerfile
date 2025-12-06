@@ -16,9 +16,6 @@ RUN pip install --no-cache-dir \
     requests \
     soundfile
 
-# Pré-baixar o modelo Chatterbox (evita cold start longo)
-RUN python -c "from chatterbox.tts import ChatterboxTTS; ChatterboxTTS.from_pretrained(device='cpu')"
-
 # Copiar handler
 COPY handler.py /app/handler.py
 
