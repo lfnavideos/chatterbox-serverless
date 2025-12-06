@@ -1,4 +1,4 @@
-FROM runpod/pytorch:2.2.0-py3.10-cuda12.1.1-devel-ubuntu22.04
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
   WORKDIR /app
 
@@ -9,14 +9,20 @@ FROM runpod/pytorch:2.2.0-py3.10-cuda12.1.1-devel-ubuntu22.04
       git \
       && rm -rf /var/lib/apt/lists/*
 
-  # Instalar dependências básicas primeiro
+  # Instalar numpy primeiro (necessário para pkuseg)
+  RUN pip install --no-cache-dir numpy==1.26.0
+
+  # Clonar e instalar chatterbox do source
+  RUN git clone https://github.com/resemble-ai/chatterbox.git /tmp/chatterbox && \
+      cd /tmp/chatterbox && \
+      pip install --no-cache-dir -e . && \
+      rm -rf /tmp/chatterbox/.git
+
+  # Instalar dependências adicionais
   RUN pip install --no-cache-dir \
       runpod \
       requests \
       soundfile
-
-  # Instalar chatterbox-tts (inclui torchaudio e outras dependências)
-  RUN pip install --no-cache-dir chatterbox-tts
 
   # Copiar handler
   COPY handler.py /app/handler.py
