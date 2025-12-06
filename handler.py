@@ -1,16 +1,23 @@
 """
-Chatterbox TTS - RunPod Serverless Handler
-==========================================
+Chatterbox TTS Multilingual - RunPod Serverless Handler
+=======================================================
 Template customizado para o projeto "A Bíblia em Vídeos"
 
+IMPORTANTE: Usa o modelo MULTILINGUAL para suporte a português!
+
 Suporta:
+- 23 idiomas incluindo PORTUGUÊS (pt)
 - Áudio de referência via URL direta (MP3, WAV)
 - Áudio de referência via base64
-- Cross-lingual voice cloning (português com voz inglesa)
+- Cross-lingual voice cloning
 - Controle de emoção (exaggeration)
 
+Idiomas suportados:
+ar, da, de, el, en, es, fi, fr, he, hi, it, ja, ko,
+ms, nl, no, pl, pt, ru, sv, sw, tr, zh
+
 Autor: Projeto Bíblia em Vídeos
-Data: 2025-12-05
+Data: 2025-12-06
 """
 
 import runpod
@@ -26,15 +33,23 @@ from typing import Optional
 # Variável global para o modelo (carrega uma vez, reutiliza)
 MODEL = None
 
+# Idiomas suportados pelo modelo multilingual
+SUPPORTED_LANGUAGES = [
+    "ar", "da", "de", "el", "en", "es", "fi", "fr", "he", "hi",
+    "it", "ja", "ko", "ms", "nl", "no", "pl", "pt", "ru", "sv",
+    "sw", "tr", "zh"
+]
+
 def get_model():
-    """Carrega o modelo Chatterbox (singleton pattern)"""
+    """Carrega o modelo Chatterbox MULTILINGUAL (singleton pattern)"""
     global MODEL
     if MODEL is None:
-        print("🔄 Carregando modelo Chatterbox...")
-        from chatterbox.tts import ChatterboxTTS
+        print("🔄 Carregando modelo Chatterbox MULTILINGUAL...")
+        # IMPORTANTE: Usar ChatterboxMultilingualTTS para suporte a português!
+        from chatterbox.mtl_tts import ChatterboxMultilingualTTS
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        MODEL = ChatterboxTTS.from_pretrained(device=device)
-        print(f"✅ Modelo carregado no dispositivo: {device}")
+        MODEL = ChatterboxMultilingualTTS.from_pretrained(device=device)
+        print(f"✅ Modelo MULTILINGUAL carregado no dispositivo: {device}")
     return MODEL
 
 
@@ -58,16 +73,18 @@ def save_temp_audio(audio_data: bytes, suffix: str = ".mp3") -> str:
 def generate_speech(
     text: str,
     audio_ref_path: str,
-    cfg_weight: float = 0.0,
+    language_id: str = "pt",
+    cfg_weight: float = 0.5,
     exaggeration: float = 0.5
 ) -> bytes:
     """
-    Gera áudio com voice cloning
+    Gera áudio com voice cloning MULTILINGUAL
 
     Args:
-        text: Texto a ser sintetizado (qualquer idioma)
+        text: Texto a ser sintetizado
         audio_ref_path: Caminho para o áudio de referência
-        cfg_weight: 0.0 = português puro, 1.0 = mais fiel à voz original
+        language_id: Código do idioma (pt = português)
+        cfg_weight: Peso do CFG (0.0 a 1.0)
         exaggeration: Controle de emoção (0.0 = neutro, 1.0 = expressivo)
 
     Returns:
@@ -75,15 +92,18 @@ def generate_speech(
     """
     model = get_model()
 
-    print(f"🎤 Gerando áudio...")
+    print(f"🎤 Gerando áudio MULTILINGUAL...")
     print(f"   Texto: {text[:50]}...")
+    print(f"   Idioma: {language_id}")
     print(f"   cfg_weight: {cfg_weight}")
     print(f"   exaggeration: {exaggeration}")
 
-    # Gerar áudio
+    # Gerar áudio com modelo MULTILINGUAL
+    # O parâmetro language_id é CRUCIAL para português!
     wav = model.generate(
         text=text,
         audio_prompt_path=audio_ref_path,
+        language_id=language_id,
         cfg_weight=cfg_weight,
         exaggeration=exaggeration
     )
@@ -113,9 +133,10 @@ def handler(event: dict) -> dict:
             "audio_ref_base64": "UklGRi...",
 
             // Parâmetros opcionais
-            "cfg_weight": 0.0,      // 0.0 = sem sotaque, 1.0 = mais fiel
-            "exaggeration": 0.5,    // 0.0 = neutro, 1.0 = expressivo
-            "output_format": "wav"  // wav ou mp3 (futuro)
+            "language_id": "pt",        // IMPORTANTE: idioma do texto (default: pt)
+            "cfg_weight": 0.5,          // Peso do CFG
+            "exaggeration": 0.5,        // 0.0 = neutro, 1.0 = expressivo
+            "output_format": "wav"      // wav ou mp3 (futuro)
         }
     }
 
@@ -123,7 +144,8 @@ def handler(event: dict) -> dict:
     {
         "audio_base64": "UklGRi...",
         "sample_rate": 24000,
-        "duration_seconds": 5.2
+        "duration_seconds": 5.2,
+        "language_id": "pt"
     }
     """
     try:
@@ -141,8 +163,15 @@ def handler(event: dict) -> dict:
             return {"error": "Forneça 'audio_ref_url' ou 'audio_ref_base64'"}
 
         # Parâmetros opcionais
-        cfg_weight = float(input_data.get("cfg_weight", 0.0))
+        language_id = input_data.get("language_id", "pt")  # Default: português!
+        cfg_weight = float(input_data.get("cfg_weight", 0.5))
         exaggeration = float(input_data.get("exaggeration", 0.5))
+
+        # Validar idioma
+        if language_id not in SUPPORTED_LANGUAGES:
+            return {
+                "error": f"Idioma '{language_id}' não suportado. Suportados: {SUPPORTED_LANGUAGES}"
+            }
 
         # Obter áudio de referência
         temp_audio_path = None
@@ -162,6 +191,7 @@ def handler(event: dict) -> dict:
             output_audio = generate_speech(
                 text=text,
                 audio_ref_path=temp_audio_path,
+                language_id=language_id,
                 cfg_weight=cfg_weight,
                 exaggeration=exaggeration
             )
@@ -174,7 +204,8 @@ def handler(event: dict) -> dict:
             return {
                 "audio_base64": base64.b64encode(output_audio).decode("utf-8"),
                 "sample_rate": model.sr,
-                "duration_seconds": round(duration, 2)
+                "duration_seconds": round(duration, 2),
+                "language_id": language_id
             }
 
         finally:
@@ -191,12 +222,14 @@ def handler(event: dict) -> dict:
 
 # Iniciar servidor RunPod
 if __name__ == "__main__":
-    print("🚀 Iniciando Chatterbox TTS Serverless...")
+    print("🚀 Iniciando Chatterbox TTS MULTILINGUAL Serverless...")
     print("📋 Parâmetros suportados:")
     print("   - text: Texto a sintetizar (obrigatório)")
     print("   - audio_ref_url: URL do áudio de referência")
     print("   - audio_ref_base64: Áudio de referência em base64")
-    print("   - cfg_weight: 0.0 (português puro) a 1.0 (mais fiel)")
+    print("   - language_id: Idioma do texto (default: pt)")
+    print(f"     Suportados: {SUPPORTED_LANGUAGES}")
+    print("   - cfg_weight: 0.0 a 1.0 (default: 0.5)")
     print("   - exaggeration: 0.0 (neutro) a 1.0 (expressivo)")
 
     runpod.serverless.start({"handler": handler})
